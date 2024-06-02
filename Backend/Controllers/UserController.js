@@ -1,7 +1,7 @@
 import asyncHandler from 'express-async-handler';
 import User from  '../Models/Usermodels.js';
 import bcrypt from 'bcryptjs';
-import generateToken from '../Middlewares/Auth.js';
+import { generateToken } from '../Middlewares/Auth.js';
 
 const registerUser = asyncHandler(async (req, res) => {
   const { fullName, email, password, Image } = req.body;
@@ -47,4 +47,65 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 });
 
-export { registerUser };
+const loginUser = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    // Find user in DB
+    const user = await User.findOne({ email });
+    
+    // If user exists, compare password
+    if (user && (await bcrypt.compare(password, user.password))) {
+      res.json({
+        _id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        Image: user.Image,
+        isAdmin: user.isAdmin,
+        token: generateToken(user._id),
+      });
+    } else {
+      res.status(401).json({ message: "Invalid email or password" });
+    }
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+
+const updateUserProfile = asyncHandler (async(req,res)=>{
+  const { fullName,email,Image} = req.body;
+try {
+  const user = await User.findById(req.user._id);
+
+  if(user){
+    user.fullName = fullName || user.fullName;
+    user.email = email || user.email;
+    user.Image = Image || user.Image;
+    const updateUser = await user.save();
+
+    res.json({
+      _id : updateUser._id,
+      fullName : updateUser.fullName,
+      email : updateUser.email,
+      Image : updateUser.Image,
+      isAdmin : updateUser.isAdmin,
+
+      token : generateToken(updateUser._id),
+
+    });
+
+
+  }
+
+  else{
+    res.status(400);
+    throw new Error("user not found ")
+  }
+  
+} catch (error) {
+  res.status(400).json({ message: error.message})
+}
+})
+
+
+export { registerUser , loginUser, updateUserProfile};
